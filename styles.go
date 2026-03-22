@@ -1,6 +1,9 @@
 package main
 
-import "github.com/charmbracelet/lipgloss"
+import (
+	"charm.land/bubbles/v2/table"
+	"charm.land/lipgloss/v2"
+)
 
 type styles struct {
 	header           lipgloss.Style
@@ -30,4 +33,18 @@ func defaultStyles() styles {
 		inActiveMenuItem: lipgloss.NewStyle().
 			Padding(0, 1),
 	}
+}
+
+func tableStyles() table.Styles {
+	s := table.DefaultStyles()
+	s.Header = s.Header.
+		BorderStyle(lipgloss.NormalBorder()).
+		BorderForeground(lipgloss.Color("240")).
+		BorderBottom(true).
+		Bold(false)
+	s.Selected = s.Selected.
+		Foreground(lipgloss.Color("229")).
+		Background(lipgloss.Color("57")).
+		Bold(false)
+	return s
 }

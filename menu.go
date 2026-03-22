@@ -23,3 +23,11 @@ func (m menu) String() string {
 		return ""
 	}
 }
+
+func newMenu() []menu {
+	return []menu{
+		all,
+		explicit,
+		aur,
+	}
+}
