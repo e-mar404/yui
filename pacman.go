@@ -4,11 +4,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 )
-
-type pkgList []pkg
 
 type pkg struct {
 	name    string
@@ -16,38 +14,51 @@ type pkg struct {
 }
 
 type pacmanMsg struct {
-	pkgType menu
-	list    pkgList
-	err     error
+	pkgType  menu
+	pkgItems []list.Item
+	err      error
+}
+
+func (p pkg) Title() string {
+	return p.name
+}
+
+func (p pkg) Description() string {
+	return ""
+}
+
+func (p pkg) FilterValue() string {
+	return p.name
 }
 
 func loadAllInstalledPkgs() tea.Msg {
 	out, err := exec.Command("pacman", "-Q").Output()
 
-	var list pkgList
-	for _, line := range strings.Split(string(out), "\n") {
+	pkgItems := []list.Item{}
+	for line := range strings.SplitSeq(string(out), "\n") {
 		if line == "" {
 			continue
 		}
 
 		s := strings.Split(line, " ")
 
-		list = append(list, pkg{
-			name:    s[0],
-			version: s[1],
-		})
+		pkgItems = append(pkgItems, list.Item(
+			pkg{
+				name:    s[0],
+				version: s[1],
+			},
+		))
 	}
 
 	return pacmanMsg{
-		pkgType: all,
-		list:    list,
-		err:     err,
+		pkgType:  all,
+		pkgItems: pkgItems,
+		err:      err,
 	}
 }
 
-func pacmanColumns() []table.Column {
-	return []table.Column{
-		{Title: "Name", Width: 20},
-		{Title: "Version", Width: 20},
-	}
+func newPkgList() list.Model {
+	// TODO: create custom delegate for my use case
+	// it should resemble a table as much as possible, i just want it to be a list for the built-in filtering
+	return list.New([]list.Item{}, list.NewDefaultDelegate(), 0, 0)
 }

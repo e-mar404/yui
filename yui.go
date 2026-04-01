@@ -3,7 +3,7 @@ package main
 import (
 	"fmt"
 
-	"charm.land/bubbles/v2/table"
+	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -11,8 +11,7 @@ import (
 type yui struct {
 	title      string
 	menu       []menu
-	pkgLists   []pkgList
-	table      table.Model
+	pkgList    list.Model
 	activeMenu int
 	styles     styles
 }
@@ -23,6 +22,7 @@ func (y yui) Init() tea.Cmd {
 
 func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	var cmd tea.Cmd
+	var cmds []tea.Cmd
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
@@ -38,7 +38,9 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		y.styles.header = y.styles.header.Width(width)
 		y.styles.menu = y.styles.menu.Width(menuWidth)
 
-		y.table.SetHeight(height - 4)
+		// TODO: instead of a hard coded value find a way to calculate it
+		y.pkgList.SetHeight(height - 5)
+		y.pkgList.SetWidth(width)
 
 	case pacmanMsg:
 		if msg.err != nil {
@@ -47,17 +49,8 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.pkgType {
 		case all:
-			y.pkgLists[all] = msg.list
+			cmds = append(cmds, y.pkgList.SetItems(msg.pkgItems))
 		}
-
-		var rows []table.Row
-		for _, pkg := range msg.list {
-			rows = append(rows, table.Row{
-				pkg.name,
-				pkg.version,
-			})
-		}
-		y.table.SetRows(rows)
 
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -75,9 +68,10 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	y.table, cmd = y.table.Update(msg)
+	y.pkgList, cmd = y.pkgList.Update(msg)
+	cmds = append(cmds, cmd)
 
-	return y, cmd
+	return y, tea.Batch(cmds...)
 }
 
 func (y yui) View() tea.View {
@@ -113,25 +107,16 @@ func (y yui) headerView() string {
 }
 
 func (y yui) contentView() string {
-	return y.table.View()
+	return y.pkgList.View()
 }
 
 func NewYui() yui {
 	menu := newMenu()
 
-	t := table.New(
-		table.WithColumns(pacmanColumns()),
-		table.WithFocused(true),
-		table.WithHeight(15),
-		table.WithWidth(42),
-	)
-	t.SetStyles(tableStyles())
-
 	return yui{
 		title:      "yui",
 		styles:     defaultStyles(),
-		pkgLists:   make([]pkgList, len(menu)),
-		table:      t,
+		pkgList:    newPkgList(),
 		menu:       menu,
 		activeMenu: 0,
 	}
