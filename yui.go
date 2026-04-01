@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 
-	"charm.land/bubbles/v2/list"
 	tea "charm.land/bubbletea/v2"
 	"charm.land/lipgloss/v2"
 )
@@ -11,7 +10,7 @@ import (
 type yui struct {
 	title      string
 	menu       []menu
-	pkgList    list.Model
+	pkgList    pkgList
 	activeMenu int
 	styles     styles
 }
@@ -26,7 +25,7 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		width, height := msg.Width, msg.Height
+		width, _ := msg.Width, msg.Height
 
 		_, rightHeaderPadding, _, leftHeaderPadding := y.styles.header.GetPadding()
 		_, rigthTitlePadding, _, leftTitlePadding := y.styles.title.GetPadding()
@@ -38,10 +37,6 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		y.styles.header = y.styles.header.Width(width)
 		y.styles.menu = y.styles.menu.Width(menuWidth)
 
-		// TODO: instead of a hard coded value find a way to calculate it
-		y.pkgList.SetHeight(height - 5)
-		y.pkgList.SetWidth(width)
-
 	case pacmanMsg:
 		if msg.err != nil {
 			return y, tea.Quit
@@ -49,7 +44,7 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.pkgType {
 		case all:
-			cmds = append(cmds, y.pkgList.SetItems(msg.pkgItems))
+			y.pkgList.SetPkgs(msg.pkgs)
 		}
 
 	case tea.KeyMsg:
@@ -68,7 +63,9 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 	}
 
-	y.pkgList, cmd = y.pkgList.Update(msg)
+	model, cmd := y.pkgList.Update(msg)
+	y.pkgList = model.(pkgList)
+
 	cmds = append(cmds, cmd)
 
 	return y, tea.Batch(cmds...)
@@ -107,7 +104,7 @@ func (y yui) headerView() string {
 }
 
 func (y yui) contentView() string {
-	return y.pkgList.View()
+	return y.pkgList.View().Content
 }
 
 func NewYui() yui {
