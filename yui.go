@@ -9,8 +9,8 @@ import (
 
 type yui struct {
 	title      string
-	menu       []menu
-	pkgList    pkgList
+	menus      []menu
+	pkgLists   []pkgList
 	activeMenu int
 	styles     styles
 }
@@ -25,7 +25,7 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
-		width, _ := msg.Width, msg.Height
+		width, height := msg.Width, msg.Height
 
 		_, rightHeaderPadding, _, leftHeaderPadding := y.styles.header.GetPadding()
 		_, rigthTitlePadding, _, leftTitlePadding := y.styles.title.GetPadding()
@@ -37,6 +37,11 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		y.styles.header = y.styles.header.Width(width)
 		y.styles.menu = y.styles.menu.Width(menuWidth)
 
+		// TODO: calculate height of header and footer and subtract that from height (assuming 5 for now)
+		for _, menu := range y.menus {
+			y.pkgLists[menu].SetHeight(height - 5)
+		}
+
 	case pacmanMsg:
 		if msg.err != nil {
 			return y, tea.Quit
@@ -44,27 +49,36 @@ func (y yui) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		switch msg.pkgType {
 		case all:
-			y.pkgList.SetPkgs(msg.pkgs)
+			y.pkgLists[all].SetPkgs(msg.pkgs)
+
+		case explicit:
+			y.pkgLists[explicit].SetPkgs(msg.pkgs)
+
+		case aur:
+			y.pkgLists[aur].SetPkgs(msg.pkgs)
 		}
 
 	case tea.KeyMsg:
 		switch msg.String() {
 		case "a":
 			y.activeMenu = int(all)
+			return y, loadAllInstalledPkgs
 
 		case "e":
 			y.activeMenu = int(explicit)
+			return y, loadExplicitlyInstalledPkgs
 
 		case "u":
 			y.activeMenu = int(aur)
+			return y, loadAURInstalledPkgs
 
 		case "q", "ctrl+c":
 			return y, tea.Quit
 		}
 	}
 
-	model, cmd := y.pkgList.Update(msg)
-	y.pkgList = model.(pkgList)
+	model, cmd := y.pkgLists[y.activeMenu].Update(msg)
+	y.pkgLists[y.activeMenu] = model.(pkgList)
 
 	cmds = append(cmds, cmd)
 
@@ -85,7 +99,7 @@ func (y yui) View() tea.View {
 
 func (y yui) headerView() string {
 	var styledMenuItems []string
-	for i, item := range y.menu {
+	for i, item := range y.menus {
 		style := y.styles.inActiveMenuItem
 		if y.activeMenu == i {
 			style = y.styles.activeMenuItem
@@ -104,17 +118,22 @@ func (y yui) headerView() string {
 }
 
 func (y yui) contentView() string {
-	return y.pkgList.View().Content
+	return y.pkgLists[y.activeMenu].View().Content
 }
 
 func NewYui() yui {
 	menu := newMenu()
 
+	var pkgLists []pkgList
+	for range len(menu) {
+		pkgLists = append(pkgLists, newPkgList())
+	}
+
 	return yui{
 		title:      "yui",
 		styles:     defaultStyles(),
-		pkgList:    newPkgList(),
-		menu:       menu,
+		pkgLists:   pkgLists,
+		menus:      menu,
 		activeMenu: 0,
 	}
 }

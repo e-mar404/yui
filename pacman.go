@@ -16,8 +16,36 @@ type pacmanMsg struct {
 func loadAllInstalledPkgs() tea.Msg {
 	out, err := exec.Command("pacman", "-Q").Output()
 
+	return pacmanMsg{
+		pkgType: all,
+		pkgs:    parsePkgs(out),
+		err:     err,
+	}
+}
+
+func loadExplicitlyInstalledPkgs() tea.Msg {
+	out, err := exec.Command("pacman", "-Qe").Output()
+
+	return pacmanMsg{
+		pkgType: explicit,
+		pkgs:    parsePkgs(out),
+		err:     err,
+	}
+}
+
+func loadAURInstalledPkgs() tea.Msg {
+	out, err := exec.Command("pacman", "-Qm").Output()
+
+	return pacmanMsg{
+		pkgType: aur,
+		pkgs:    parsePkgs(out),
+		err:     err,
+	}
+}
+
+func parsePkgs(in []byte) []pkg {
 	pkgs := []pkg{}
-	for line := range strings.SplitSeq(string(out), "\n") {
+	for line := range strings.SplitSeq(string(in), "\n") {
 		if line == "" {
 			continue
 		}
@@ -32,9 +60,5 @@ func loadAllInstalledPkgs() tea.Msg {
 		)
 	}
 
-	return pacmanMsg{
-		pkgType: all,
-		pkgs:    pkgs,
-		err:     err,
-	}
+	return pkgs
 }
